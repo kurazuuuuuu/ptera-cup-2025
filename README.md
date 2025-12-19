@@ -51,3 +51,12 @@
 * VSCode
 * Antigravity
     * Gemini, Claude Opus, etc...
+
+## 開発
+### メンバー
+* Swift 2人 (内1人インフラ)
+    * @kurazuuuuuu
+    * @KYPark222
+* バックエンド 2人
+    * @sei0426
+    * @akira-68
