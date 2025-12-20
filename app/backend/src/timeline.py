@@ -1,28 +1,60 @@
-from typing import List
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from src.db import get_async_session
-from src.models import TimelinePost, TimelinePostCreate, TimelinePostRead, User
+from src.models import (
+    TimelinePost, TimelinePostCreate, TimelinePostRead, 
+    TimelineReaction, TimelineFeedResponse, User
+)
 from src.auth import current_active_user
 
 router = APIRouter()
 
-# 1. 投稿を取得（タイムライン表示）
-@router.get("/posts", response_model=List[TimelinePostRead])
+# 1. 投稿を取得（タイムライン表示） - ページネーション & リアクション付き
+@router.get("/posts", response_model=List[TimelineFeedResponse])
 async def get_timeline(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user)
 ):
-    # For now, return all posts or filtered by user? 
-    # API Schema says "User's timeline", potentially friends/public?
-    # Schema: "TimelinePost" has user_id. 
-    # Let's assume for now it returns *all* posts (public timeline) or just user's.
-    # Given the context "Timeline", likely all posts or friends.
-    # Let's just return all posts sorted by date for now as a simple implementation.
-    result = await db.execute(select(TimelinePost).order_by(TimelinePost.created_at.desc()))
-    return result.scalars().all()
+    # Query: TimelinePost + User (Author)
+    stmt = (
+        select(TimelinePost, User)
+        .join(User, TimelinePost.user_id == User.id)
+        .order_by(TimelinePost.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    posts_with_users = result.all() # [(TimelinePost, User), ...]
+    
+    response = []
+    for post, author in posts_with_users:
+        # Get Like Count
+        likes_count_stmt = select(func.count(TimelineReaction.id)).where(TimelineReaction.post_id == post.id)
+        likes_count_res = await db.execute(likes_count_stmt)
+        likes_count = likes_count_res.scalar() or 0
+        
+        # Get My Reaction
+        my_reaction_stmt = select(TimelineReaction.reaction_type).where(
+            TimelineReaction.post_id == post.id,
+            TimelineReaction.user_id == user.id
+        )
+        my_reaction_res = await db.execute(my_reaction_stmt)
+        my_reaction = my_reaction_res.scalar_one_or_none()
+        
+        response.append(TimelineFeedResponse(
+            post=post,
+            user=author,
+            likes=likes_count,
+            my_reaction=my_reaction
+        ))
+        
+    return response
 
 # 2. 新規投稿
 @router.post("/posts", response_model=TimelinePostRead)
@@ -48,24 +80,59 @@ async def delete_post(
     db: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user)
 ):
-    # IDで投稿を検索
     result = await db.execute(select(TimelinePost).where(TimelinePost.id == post_id))
     db_post = result.scalars().first()
     
-    # もし投稿が見つからなければエラーを返す
     if db_post is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail=f"ID {post_id} の投稿は見つかりませんでした。"
-        )
+        raise HTTPException(status_code=404, detail=f"Post {post_id} not found")
     
-    # 権限チェック (自分の投稿しか削除できない)
     if db_post.user_id != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="他のユーザーの投稿は削除できません。"
-        )
+        raise HTTPException(status_code=403, detail="Cannot delete other user's post")
     
-    # 削除実行
     await db.delete(db_post)
     await db.commit()
+
+# 4. リアクション追加/更新
+@router.post("/posts/{post_id}/reactions", status_code=status.HTTP_200_OK)
+async def react_to_post(
+    post_id: uuid.UUID,
+    reaction_type: str = Query(..., regex="^(point|thumbsUp|hand|pinch)$"),
+    db: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user)
+):
+    # Check if reaction exists
+    result = await db.execute(select(TimelineReaction).where(
+        TimelineReaction.post_id == post_id,
+        TimelineReaction.user_id == user.id
+    ))
+    existing_reaction = result.scalars().first()
+    
+    if existing_reaction:
+        existing_reaction.reaction_type = reaction_type
+    else:
+        new_reaction = TimelineReaction(
+            user_id=user.id,
+            post_id=post_id,
+            reaction_type=reaction_type
+        )
+        db.add(new_reaction)
+    
+    await db.commit()
+    return {"status": "success", "reaction": reaction_type}
+
+# 5. リアクション削除
+@router.delete("/posts/{post_id}/reactions", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_reaction(
+    post_id: uuid.UUID,
+    db: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user)
+):
+    result = await db.execute(select(TimelineReaction).where(
+        TimelineReaction.post_id == post_id,
+        TimelineReaction.user_id == user.id
+    ))
+    existing_reaction = result.scalars().first()
+    
+    if existing_reaction:
+        await db.delete(existing_reaction)
+        await db.commit()

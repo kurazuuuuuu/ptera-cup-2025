@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from src.db import get_async_session
-from src.models import ScheduleEvent, ScheduleEventCreate, ScheduleEventRead, ScheduleEventUpdate, User
+from src.models import ScheduleEvent, ScheduleEventCreate, ScheduleEventRead, ScheduleEventUpdate, User, TimelinePost
 from src.auth import current_active_user
 
 router = APIRouter()
@@ -25,6 +25,18 @@ async def create_event(
 ):
     db_event = ScheduleEvent(**event.model_dump(), user_id=user.id)
     db.add(db_event)
+    
+    # Auto-post to timeline if AI generated
+    if db_event.is_ai_generated:
+        # Default content for now. In future, we could generate this description too.
+        content = f"Planned: {db_event.title} ({db_event.category})"
+        timeline_post = TimelinePost(
+            user_id=user.id,
+            event_id=db_event.id,
+            content=content
+        )
+        db.add(timeline_post)
+        
     await db.commit()
     await db.refresh(db_event)
     return db_event

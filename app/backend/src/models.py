@@ -118,5 +118,18 @@ class TimelinePostRead(TimelinePostBase):
 class TimelinePostCreate(TimelinePostBase):
     event_id: uuid.UUID
 
+class TimelineReaction(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id")
+    post_id: uuid.UUID = Field(foreign_key="timelinepost.id")
+    reaction_type: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class TimelineFeedResponse(SQLModel):
+    post: TimelinePostRead
+    user: UserRead
+    likes: int
+    my_reaction: Optional[str] = None
+
 # Re-update forward refs for nested models
 AuthResponse.model_rebuild()
