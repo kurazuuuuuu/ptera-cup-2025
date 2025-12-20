@@ -33,8 +33,10 @@
     * Foundation Model Framework (Local LLM)
 
 ### バックエンド
-* Python
-    * FastAPI
+* ~~Python~~
+    * ~~FastAPI~~
+* Ruby
+    * Ruby on Rails (API Mode)
 
 ### 開発環境
 #### > CloudIDE
@@ -44,7 +46,7 @@
 
 #### > Environment & Package Management
 * Docker
-* uv
+* Gem
 
 #### > IDE
 * XCode (MacOS 26)
