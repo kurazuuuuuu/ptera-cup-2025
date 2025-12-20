@@ -6,7 +6,9 @@ import uvicorn
 from src.auth import auth_backend, fastapi_users
 from src.db import create_db_and_tables
 from src.schemas import UserCreate, UserRead, UserUpdate
-from src.time_line import router as timeline_router
+from src.timeline import router as timeline_router
+from src.routers.events import router as events_router
+from src.routers.profile import router as profile_router
 
 
 @asynccontextmanager
@@ -19,35 +21,46 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# /auth/jwt/login
-# /auth/jwt/logout
+# /v1/auth
 app.include_router(
     fastapi_users.get_auth_router(auth_backend),
-    prefix="/auth/jwt",
+    prefix="/v1/auth/jwt",
     tags=["auth"],
 )
 
-# /auth/register
 app.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
-    prefix="/auth",
+    prefix="/v1/auth",
     tags=["auth"],
 )
 
-# /users
+# /v1/users
 app.include_router(
     fastapi_users.get_users_router(UserRead, UserUpdate),
-    prefix="/users",
+    prefix="/v1/users",
     tags=["users"],
 )
 
-# /posts (Timeline)
-app.include_router(timeline_router)
+# /v1/events
+app.include_router(
+    events_router,
+    prefix="/v1/events",
+    tags=["events"],
+)
 
+# /v1/profile
+app.include_router(
+    profile_router,
+    prefix="/v1/profile",
+    tags=["profile"],
+)
+
+# /v1/timeline
+app.include_router(timeline_router, prefix="/v1/timeline", tags=["timeline"])
 
 @app.get("/")
 async def root():
-    return {"message": "Hello from backend!"}
+    return {"message": "Hello from VibeCalendar Backend!"}
 
 
 def main():

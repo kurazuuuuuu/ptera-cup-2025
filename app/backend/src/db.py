@@ -1,12 +1,11 @@
 from collections.abc import AsyncGenerator
-from typing import AsyncGenerator
 
 from fastapi import Depends
 from fastapi_users.db import SQLAlchemyUserDatabase
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 
-from src.models import User
+from src.models import User, ScheduleEvent, UserProfile, TimelinePost  # noqa: F401
 
 DATABASE_URL = "sqlite+aiosqlite:///./database.db"
 
