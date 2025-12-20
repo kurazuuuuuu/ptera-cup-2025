@@ -6,6 +6,7 @@ import uvicorn
 from src.auth import auth_backend, fastapi_users
 from src.db import create_db_and_tables
 from src.schemas import UserCreate, UserRead, UserUpdate
+from src.time_line import router as timeline_router
 
 
 @asynccontextmanager
@@ -39,6 +40,9 @@ app.include_router(
     prefix="/users",
     tags=["users"],
 )
+
+# /posts (Timeline)
+app.include_router(timeline_router)
 
 
 @app.get("/")
