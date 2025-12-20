@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "app/backend/"
+		},
+		{
+			"path": "app/tool"
 		}
 	],
 	"settings": {}

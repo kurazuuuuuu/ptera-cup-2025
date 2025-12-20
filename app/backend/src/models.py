@@ -1,7 +1,12 @@
 from typing import Optional
 from datetime import datetime
 from sqlmodel import SQLModel, Field
+import uuid
 
+# ==========================================
+# Auth Models
+# Matching Swift: LoginRequest
+# ==========================================
 # ==========================================
 # Auth Models
 # Matching Swift: LoginRequest
@@ -25,13 +30,16 @@ class AuthResponse(SQLModel):
 # Database Models (SQLModel tables)
 # ==========================================
 
-class UserBase(SQLModel):
+# SQLAlchemyBaseUserTableUUID replacement
+class User(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    email: str = Field(unique=True, index=True, max_length=320)
+    hashed_password: str
+    is_active: bool = Field(default=True)
+    is_superuser: bool = Field(default=False)
+    is_verified: bool = Field(default=False)
+    
     username: str
-    email: str
-
-class User(UserBase, table=True):
-    id: str = Field(primary_key=True)
-    password_hash: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class ScheduleEventBase(SQLModel):
@@ -43,24 +51,24 @@ class ScheduleEventBase(SQLModel):
     ek_event_id: Optional[str] = None
 
 class ScheduleEvent(ScheduleEventBase, table=True):
-    id: str = Field(primary_key=True)
-    user_id: str = Field(foreign_key="user.id")
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class UserProfileBase(SQLModel):
     encoded_preferences: str
 
 class UserProfile(UserProfileBase, table=True):
-    user_id: str = Field(primary_key=True, foreign_key="user.id")
+    user_id: uuid.UUID = Field(primary_key=True, foreign_key="user.id")
     last_updated: datetime = Field(default_factory=datetime.utcnow)
 
 class TimelinePostBase(SQLModel):
     content: str
 
 class TimelinePost(TimelinePostBase, table=True):
-    id: str = Field(primary_key=True)
-    user_id: str = Field(foreign_key="user.id")
-    event_id: str = Field(foreign_key="scheduleevent.id")
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="user.id")
+    event_id: uuid.UUID = Field(foreign_key="scheduleevent.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 # ==========================================
@@ -69,15 +77,20 @@ class TimelinePost(TimelinePostBase, table=True):
 # ==========================================
 
 # Matching Swift: User
-class UserRead(UserBase):
-    id: str
+class UserRead(SQLModel):
+    id: uuid.UUID
+    username: str
+    email: str
     created_at: datetime
 
 # Matching Swift: ScheduleEvent
 class ScheduleEventRead(ScheduleEventBase):
-    id: str
-    user_id: str
+    id: uuid.UUID
+    user_id: uuid.UUID
     created_at: datetime
+
+    class Config:
+        from_attributes = True
 
 class ScheduleEventCreate(ScheduleEventBase):
     pass
@@ -92,18 +105,18 @@ class ScheduleEventUpdate(SQLModel):
 
 # Matching Swift: UserProfile
 class UserProfileRead(UserProfileBase):
-    user_id: str
+    user_id: uuid.UUID
     last_updated: datetime
 
 # Matching Swift: TimelinePost
 class TimelinePostRead(TimelinePostBase):
-    id: str
-    user_id: str
-    event_id: str
+    id: uuid.UUID
+    user_id: uuid.UUID
+    event_id: uuid.UUID
     created_at: datetime
 
 class TimelinePostCreate(TimelinePostBase):
-    event_id: str
+    event_id: uuid.UUID
 
 # Re-update forward refs for nested models
-AuthResponse.update_forward_refs()
+AuthResponse.model_rebuild()

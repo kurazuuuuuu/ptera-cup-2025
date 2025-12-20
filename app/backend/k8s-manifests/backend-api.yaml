@@ -1,0 +1,52 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ptera-cup-2025-api
+  namespace: argocd-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ptera-cup-2025-api
+  template:
+    metadata:
+      labels:
+        app: ptera-cup-2025-api
+    spec:
+      imagePullSecrets:
+      - name: ghcr-registry-secret
+      containers:
+      - name: ptera-cup-2025-api
+        image: ghcr.io/kurazuuuuuu/ptera-cup-2025:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: hackathon-secrets
+              key: jwt-secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ptera-cup-2025-api-lb
+  namespace: argocd-prod
+spec:
+  selector:
+    app: ptera-cup-2025-api
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: LoadBalancer
+  loadBalancerIP: 192.168.1.28
