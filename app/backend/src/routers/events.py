@@ -34,7 +34,8 @@ async def create_event(
             user_id=user.id,
             event_id=db_event.id,
             content=content,
-            category=db_event.category
+            category=db_event.category,
+            event_date=db_event.start_date.strftime("%Y/%m/%d")
         )
         db.add(timeline_post)
         

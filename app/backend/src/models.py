@@ -66,6 +66,7 @@ class TimelinePostBase(SQLModel):
     content: str
     category: Optional[str] = None
     icon_url: Optional[str] = None
+    event_date: Optional[str] = None
 
 class TimelinePost(TimelinePostBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
