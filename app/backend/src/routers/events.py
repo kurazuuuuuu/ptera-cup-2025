@@ -23,6 +23,7 @@ async def create_event(
     db: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user)
 ):
+    print(f"DEBUG: Receiving event sync: title={event.title}, start_date={event.start_date}, is_ai={event.is_ai_generated}")
     db_event = ScheduleEvent(**event.model_dump(), user_id=user.id)
     db.add(db_event)
     
@@ -35,8 +36,10 @@ async def create_event(
             event_id=db_event.id,
             content=content,
             category=db_event.category,
-            event_date=db_event.start_date.strftime("%Y/%m/%d")
+            event_date=db_event.start_date.strftime("%Y/%m/%d"),
+            color_hex=db_event.color_hex
         )
+        print(f"DEBUG: Extracted event_date: {timeline_post.event_date}")
         db.add(timeline_post)
         
     await db.commit()

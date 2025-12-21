@@ -49,6 +49,7 @@ class ScheduleEventBase(SQLModel):
     end_date: datetime
     is_ai_generated: bool = False
     ek_event_id: Optional[str] = None
+    color_hex: Optional[str] = None
 
 class ScheduleEvent(ScheduleEventBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -67,6 +68,7 @@ class TimelinePostBase(SQLModel):
     category: Optional[str] = None
     icon_url: Optional[str] = None
     event_date: Optional[str] = None
+    color_hex: Optional[str] = None
 
 class TimelinePost(TimelinePostBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
