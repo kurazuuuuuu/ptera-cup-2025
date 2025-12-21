@@ -1,6 +1,6 @@
 import uuid
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -9,6 +9,8 @@ from src.models import (
     TimelinePost, TimelinePostCreate, TimelinePostRead, 
     TimelineReaction, TimelineFeedResponse, User
 )
+import os
+import shutil
 from src.auth import current_active_user
 
 router = APIRouter()
@@ -136,3 +138,37 @@ async def remove_reaction(
     if existing_reaction:
         await db.delete(existing_reaction)
         await db.commit()
+
+# 6. アイコンのアップロード
+@router.post("/posts/{post_id}/icon", status_code=status.HTTP_200_OK)
+async def upload_post_icon(
+    post_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user)
+):
+    # Check if post exists and belongs to user
+    result = await db.execute(select(TimelinePost).where(TimelinePost.id == post_id))
+    db_post = result.scalars().first()
+    
+    if db_post is None:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    if db_post.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this post")
+    
+    # Save file
+    file_ext = os.path.splitext(file.filename)[1]
+    file_name = f"{post_id}{file_ext}"
+    file_path = f"storage/icons/{file_name}"
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    # Update icon_url
+    db_post.icon_url = f"/storage/icons/{file_name}"
+    db.add(db_post)
+    await db.commit()
+    await db.refresh(db_post)
+    
+    return {"status": "success", "icon_url": db_post.icon_url}

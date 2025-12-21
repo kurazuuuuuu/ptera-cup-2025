@@ -33,7 +33,8 @@ async def create_event(
         timeline_post = TimelinePost(
             user_id=user.id,
             event_id=db_event.id,
-            content=content
+            content=content,
+            category=db_event.category
         )
         db.add(timeline_post)
         

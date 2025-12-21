@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
-
+import os
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from src.auth import auth_backend, fastapi_users
@@ -20,6 +21,12 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+# Ensure storage directory exists
+os.makedirs("storage/icons", exist_ok=True)
+
+# Static files for icons
+app.mount("/storage", StaticFiles(directory="storage"), name="storage")
 
 # /v1/auth
 app.include_router(
