@@ -29,7 +29,7 @@ async def create_event(
     # Auto-post to timeline if AI generated
     if db_event.is_ai_generated:
         # Default content for now. In future, we could generate this description too.
-        content = f"Planned: {db_event.title} ({db_event.category})"
+        content = f"{db_event.title}"
         timeline_post = TimelinePost(
             user_id=user.id,
             event_id=db_event.id,
